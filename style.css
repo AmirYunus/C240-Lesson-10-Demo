@@ -1,0 +1,144 @@
+:root {
+  --bg: #f3efe7;
+  --surface: #fff9f1;
+  --text: #2d2a26;
+  --muted: #676158;
+  --accent: #cf5c36;
+  --accent-2: #87a878;
+  --ring-track: #e8dccb;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  font-family: "Trebuchet MS", "Segoe UI", sans-serif;
+  color: var(--text);
+  background:
+    radial-gradient(circle at top left, #fff7eb, transparent 45%),
+    radial-gradient(circle at bottom right, #e5efe0, transparent 45%),
+    var(--bg);
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+}
+
+.app {
+  width: min(100%, 460px);
+  background-color: var(--surface);
+  border: 2px solid #e2d4c1;
+  border-radius: 20px;
+  box-shadow: 0 16px 40px rgba(30, 24, 17, 0.12);
+  padding: 1.25rem;
+  display: grid;
+  gap: 1rem;
+}
+
+.app-header h1 {
+  margin: 0;
+  font-size: 1.8rem;
+}
+
+.timer-placeholder-label {
+  margin: 0.25rem 0 0;
+  color: var(--muted);
+}
+
+.timer-panel {
+  text-align: center;
+}
+
+.progress-container {
+  position: relative;
+  width: 220px;
+  margin: 0 auto;
+}
+
+.progress-ring {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+.progress-ring-track,
+.progress-ring-fill {
+  fill: none;
+  stroke-width: 10;
+}
+
+.progress-ring-track {
+  stroke: var(--ring-track);
+}
+
+.progress-ring-fill {
+  stroke: var(--accent);
+  stroke-linecap: round;
+  transform-origin: center;
+  transform: rotate(-90deg);
+}
+
+.timer-display {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font-size: 2.8rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+}
+
+.mode-label {
+  margin: 0.6rem 0 0;
+  color: var(--muted);
+}
+
+.controls {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.5rem;
+}
+
+button {
+  border: 1px solid #ccbba4;
+  border-radius: 999px;
+  padding: 0.6rem 0.75rem;
+  background: #fff;
+  color: var(--text);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+button:hover {
+  background: #fff2df;
+}
+
+.session-counter {
+  border-top: 1px solid #e7d8c6;
+  padding-top: 0.8rem;
+}
+
+.session-counter h2 {
+  margin: 0;
+  font-size: 1rem;
+  color: var(--muted);
+}
+
+#session-count {
+  margin: 0.25rem 0 0;
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--accent-2);
+}
+
+@media (max-width: 420px) {
+  .timer-display {
+    font-size: 2.2rem;
+  }
+
+  .controls {
+    grid-template-columns: 1fr;
+  }
+}
