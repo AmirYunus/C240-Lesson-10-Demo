@@ -15,9 +15,16 @@
 
       <section class="timer-panel" aria-label="Timer panel">
         <div class="progress-container" aria-hidden="true">
-          <svg class="progress-ring" viewBox="0 0 120 120">
-            <circle class="progress-ring-track" cx="60" cy="60" r="54"></circle>
+          <svg class="progress-ring" viewBox="0 0 120 120" aria-hidden="true">
             <circle
+              id="progress-ring-track"
+              class="progress-ring-track"
+              cx="60"
+              cy="60"
+              r="54"
+            ></circle>
+            <circle
+              id="progress-ring-fill"
               class="progress-ring-fill"
               cx="60"
               cy="60"

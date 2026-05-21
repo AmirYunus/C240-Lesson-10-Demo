@@ -5,18 +5,22 @@ let remainingSeconds = WORK_DURATION_SECONDS;
 let timerIntervalId = null;
 let timerDisplayElement = null;
 let phaseLabelElement = null;
+let progressRingFillElement = null;
 
 const state = { isRunning: false, phase: "work" };
 
 function initPomodoroApp() {
 	timerDisplayElement = document.getElementById("timer-value");
 	phaseLabelElement = document.getElementById("phase-label");
+	progressRingFillElement = document.getElementById("progress-ring-fill");
+	initializeProgressRing();
 
 	updateTimerDisplay(
 		Math.floor(remainingSeconds / 60),
 		remainingSeconds % 60,
 	);
 	updatePhaseLabel();
+	updateProgressCircle(100);
 
 	bindEventListeners();
 }
@@ -34,14 +38,7 @@ function startTimer() {
 		}
 
 		remainingSeconds -= 1;
-		updateTimerDisplay(
-			Math.floor(remainingSeconds / 60),
-			remainingSeconds % 60,
-		);
-
-		if (remainingSeconds === 0) {
-			switchMode(state.phase === "work" ? "break" : "work");
-		}
+		handleTimerTick();
 	}, 1000);
 }
 
@@ -62,15 +59,48 @@ function resetTimer() {
 	state.isRunning = false;
 	remainingSeconds = WORK_DURATION_SECONDS;
 	updatePhaseLabel();
+	handleTimerTick();
+}
+
+function handleTimerTick() {
 	updateTimerDisplay(
 		Math.floor(remainingSeconds / 60),
 		remainingSeconds % 60,
 	);
+
+	const phaseDuration = getDurationForPhase(state.phase);
+	const percentRemaining = phaseDuration === 0
+		? 0
+		: (remainingSeconds / phaseDuration) * 100;
+	updateProgressCircle(percentRemaining);
 }
 
-function handleTimerTick() {}
+function initializeProgressRing() {
+	if (!progressRingFillElement) {
+		return;
+	}
 
-function updateProgressCircle(percent) {}
+	const radius = Number(progressRingFillElement.getAttribute("r"));
+	const circumference = 2 * Math.PI * radius;
+	progressRingFillElement.dataset.circumference = String(circumference);
+	progressRingFillElement.style.strokeDasharray = `${circumference} ${circumference}`;
+	progressRingFillElement.style.strokeDashoffset = "0";
+}
+
+function updateProgressCircle(percent) {
+	if (!progressRingFillElement) {
+		return;
+	}
+
+	const circumference = Number(progressRingFillElement.dataset.circumference);
+	if (!Number.isFinite(circumference)) {
+		return;
+	}
+
+	const clampedPercent = Math.max(0, Math.min(100, percent));
+	const offset = circumference * (1 - clampedPercent / 100);
+	progressRingFillElement.style.strokeDashoffset = String(offset);
+}
 
 function playTransitionSound() {}
 
@@ -110,10 +140,7 @@ function switchMode(newMode) {
 	state.phase = newMode;
 	remainingSeconds = getDurationForPhase(newMode);
 	updatePhaseLabel();
-	updateTimerDisplay(
-		Math.floor(remainingSeconds / 60),
-		remainingSeconds % 60,
-	);
+	handleTimerTick();
 }
 
 function setControlStates(state) {}

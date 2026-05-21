@@ -54,12 +54,15 @@ body {
 .progress-container {
   position: relative;
   width: 220px;
+  aspect-ratio: 1;
   margin: 0 auto;
+  display: grid;
+  place-items: center;
 }
 
 .progress-ring {
   width: 100%;
-  height: auto;
+  height: 100%;
   display: block;
 }
 
@@ -71,6 +74,7 @@ body {
 
 .progress-ring-track {
   stroke: var(--ring-track);
+  opacity: 0.65;
 }
 
 .progress-ring-fill {
@@ -78,6 +82,7 @@ body {
   stroke-linecap: round;
   transform-origin: center;
   transform: rotate(-90deg);
+  transition: stroke-dashoffset 0.9s linear;
 }
 
 .timer-display {
