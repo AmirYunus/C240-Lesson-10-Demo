@@ -51,6 +51,17 @@ body {
   text-align: center;
 }
 
+.session-inline {
+  margin: 0.75rem 0 0;
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--muted);
+}
+
+.session-inline #session-count {
+  color: var(--accent-2);
+}
+
 .progress-container {
   position: relative;
   width: 220px;
@@ -115,7 +126,7 @@ body {
 
 .controls {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 0.5rem;
 }
 
@@ -131,24 +142,6 @@ button {
 
 button:hover {
   background: #fff2df;
-}
-
-.session-counter {
-  border-top: 1px solid #e7d8c6;
-  padding-top: 0.8rem;
-}
-
-.session-counter h2 {
-  margin: 0;
-  font-size: 1rem;
-  color: var(--muted);
-}
-
-#session-count {
-  margin: 0.25rem 0 0;
-  font-size: 2rem;
-  font-weight: 700;
-  color: var(--accent-2);
 }
 
 @media (max-width: 420px) {

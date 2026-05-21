@@ -1,27 +1,30 @@
 const WORK_DURATION_SECONDS = 25 * 60;
 const BREAK_DURATION_SECONDS = 5 * 60;
+const SESSION_STORAGE_KEY = "pomodoroSessions";
+const TIMER_STATE_STORAGE_KEY = "pomodoroTimerState";
 
 let remainingSeconds = WORK_DURATION_SECONDS;
 let timerIntervalId = null;
 let timerDisplayElement = null;
 let phaseLabelElement = null;
 let progressRingFillElement = null;
+let sessionCountElement = null;
 let audioContext = null;
 
-const state = { isRunning: false, phase: "work" };
+const state = { isRunning: false, phase: "work", sessionCount: 0 };
 
 function initPomodoroApp() {
 	timerDisplayElement = document.getElementById("timer-value");
 	phaseLabelElement = document.getElementById("phase-label");
 	progressRingFillElement = document.getElementById("progress-ring-fill");
+	sessionCountElement = document.getElementById("session-count");
 	initializeProgressRing();
+	loadSessionCounter();
+	loadTimerState();
 
-	updateTimerDisplay(
-		Math.floor(remainingSeconds / 60),
-		remainingSeconds % 60,
-	);
 	updatePhaseLabel();
-	updateProgressCircle(100);
+	handleTimerTick();
+	setControlStates();
 
 	bindEventListeners();
 }
@@ -32,9 +35,13 @@ function startTimer() {
 	}
 
 	state.isRunning = true;
+	saveTimerState();
 	timerIntervalId = window.setInterval(() => {
 		if (remainingSeconds <= 0) {
 			const nextPhase = state.phase === "work" ? "break" : "work";
+			if (state.phase === "work" && nextPhase === "break") {
+				updateSessionCounter(1);
+			}
 			switchMode(nextPhase);
 			playTransitionSound(nextPhase);
 			return;
@@ -50,6 +57,7 @@ function pauseTimer() {
 	clearInterval(timerIntervalId);
 	timerIntervalId = null;
 	state.isRunning = false;
+	saveTimerState();
 }
 
 function resumeTimer() {
@@ -64,6 +72,7 @@ function resetTimer() {
 	remainingSeconds = WORK_DURATION_SECONDS;
 	updatePhaseLabel();
 	handleTimerTick();
+	setControlStates();
 }
 
 function handleTimerTick() {
@@ -77,6 +86,7 @@ function handleTimerTick() {
 		? 0
 		: (remainingSeconds / phaseDuration) * 100;
 	updateProgressCircle(percentRemaining);
+	saveTimerState();
 }
 
 function initializeProgressRing() {
@@ -168,11 +178,38 @@ function playTone(frequency, durationSeconds, peakGain, type) {
 	oscillator.stop(stopAt);
 }
 
-function updateSessionCounter(increment) {}
+function updateSessionCounter(increment) {
+	if (!Number.isFinite(increment)) {
+		return;
+	}
 
-function loadSessionCounter() {}
+	const nextCount = Math.max(0, state.sessionCount + Math.trunc(increment));
+	state.sessionCount = nextCount;
+	saveSessionCounter(nextCount);
+	updateSessionCounterDisplay();
+}
 
-function saveSessionCounter(count) {}
+function loadSessionCounter() {
+	const savedValue = window.localStorage.getItem(SESSION_STORAGE_KEY);
+	const parsedValue = Number.parseInt(savedValue ?? "0", 10);
+
+	state.sessionCount = Number.isFinite(parsedValue) && parsedValue >= 0
+		? parsedValue
+		: 0;
+	updateSessionCounterDisplay();
+}
+
+function saveSessionCounter(count) {
+	window.localStorage.setItem(SESSION_STORAGE_KEY, String(count));
+}
+
+function updateSessionCounterDisplay() {
+	if (!sessionCountElement) {
+		return;
+	}
+
+	sessionCountElement.textContent = String(state.sessionCount);
+}
 
 function updateTimerDisplay(minutes, seconds) {
 	if (!timerDisplayElement) {
@@ -207,11 +244,81 @@ function switchMode(newMode) {
 	handleTimerTick();
 }
 
-function setControlStates(state) {}
+function saveTimerState() {
+	const timerState = {
+		phase: state.phase,
+		remainingSeconds,
+		isRunning: state.isRunning,
+	};
+
+	window.localStorage.setItem(
+		TIMER_STATE_STORAGE_KEY,
+		JSON.stringify(timerState),
+	);
+}
+
+function loadTimerState() {
+	const rawTimerState = window.localStorage.getItem(TIMER_STATE_STORAGE_KEY);
+	if (!rawTimerState) {
+		return;
+	}
+
+	try {
+		const parsedState = JSON.parse(rawTimerState);
+		const isValidPhase = parsedState.phase === "work" || parsedState.phase === "break";
+		const phaseForValidation = isValidPhase ? parsedState.phase : "work";
+		const maxDuration = getDurationForPhase(phaseForValidation);
+		const parsedRemaining = Number.parseInt(String(parsedState.remainingSeconds), 10);
+		const isValidRemaining = Number.isFinite(parsedRemaining) && parsedRemaining >= 0 &&
+			parsedRemaining <= maxDuration;
+
+		if (!isValidPhase || !isValidRemaining) {
+			return;
+		}
+
+		state.phase = parsedState.phase;
+		remainingSeconds = parsedRemaining;
+		state.isRunning = false;
+	} catch {
+		// Ignore malformed persisted state and keep defaults.
+	}
+}
+
+function hasTimerProgress() {
+	return state.phase !== "work" || remainingSeconds !== WORK_DURATION_SECONDS;
+}
+
+function setControlStates() {
+	const pauseResumeBtn = document.getElementById("pause-btn");
+	const resetBtn = document.getElementById("reset-btn");
+
+	if (!pauseResumeBtn || !resetBtn) {
+		return;
+	}
+
+	if (state.isRunning) {
+		pauseResumeBtn.hidden = false;
+		pauseResumeBtn.textContent = "Pause";
+		resetBtn.textContent = "Reset";
+		return;
+	}
+
+	if (hasTimerProgress()) {
+		pauseResumeBtn.hidden = false;
+		pauseResumeBtn.textContent = "Resume";
+		resetBtn.textContent = "Reset";
+		return;
+	}
+
+	pauseResumeBtn.hidden = true;
+	pauseResumeBtn.textContent = "Pause";
+	resetBtn.textContent = "Start";
+}
 
 function bindEventListeners() {
 	const pauseResumeBtn = document.getElementById("pause-btn");
 	const resetBtn = document.getElementById("reset-btn");
+	const resetSessionsBtn = document.getElementById("reset-sessions-btn");
 	const buttons = document.querySelectorAll("button");
 
 	buttons.forEach((button) => {
@@ -225,11 +332,11 @@ function bindEventListeners() {
 
 		if (state.isRunning) {
 			pauseTimer();
-			pauseResumeBtn.textContent = "Resume";
 		} else {
 			resumeTimer();
-			pauseResumeBtn.textContent = "Pause";
 		}
+
+		setControlStates();
 	});
 
 	resetBtn.addEventListener("click", () => {
@@ -237,14 +344,17 @@ function bindEventListeners() {
 
 		if (resetBtn.textContent === "Start") {
 			startTimer();
-			pauseResumeBtn.textContent = "Pause";
-			pauseResumeBtn.hidden = false;
-			resetBtn.textContent = "Reset";
 		} else {
 			resetTimer();
-			pauseResumeBtn.hidden = true;
-			resetBtn.textContent = "Start";
 		}
+
+		setControlStates();
+	});
+
+	resetSessionsBtn.addEventListener("click", () => {
+		state.sessionCount = 0;
+		saveSessionCounter(0);
+		updateSessionCounterDisplay();
 	});
 }
 
