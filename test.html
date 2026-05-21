@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Pomodoro Timer Test</title>
+    <style>
+      :root {
+        color-scheme: light;
+        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+      }
+
+      body {
+        margin: 0;
+        padding: 24px;
+        background: #f4f7fb;
+        color: #122033;
+      }
+
+      main {
+        max-width: 900px;
+        margin: 0 auto;
+      }
+
+      h1 {
+        margin-top: 0;
+      }
+
+      #result {
+        padding: 16px;
+        border-radius: 12px;
+        font-weight: 700;
+        background: #e8eef7;
+      }
+
+      #result.pass {
+        background: #dff7e4;
+        color: #165c2d;
+      }
+
+      #result.fail {
+        background: #fde7e9;
+        color: #8a1f2c;
+      }
+
+      #details {
+        margin: 12px 0 0;
+        font-family: Consolas, "Courier New", monospace;
+        white-space: pre-wrap;
+      }
+
+      iframe {
+        width: 100%;
+        height: 720px;
+        margin-top: 20px;
+        border: 1px solid #c5d0df;
+        border-radius: 12px;
+        background: #ffffff;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Pomodoro Timer Browser Test</h1>
+      <div id="result">Running...</div>
+      <pre id="details"></pre>
+      <iframe id="app-frame" title="Pomodoro app under test"></iframe>
+    </main>
+
+    <script>
+      const SESSION_STORAGE_KEY = "pomodoroSessions";
+      const TIMER_STATE_STORAGE_KEY = "pomodoroTimerState";
+
+      const resultElement = document.getElementById("result");
+      const detailsElement = document.getElementById("details");
+      const appFrame = document.getElementById("app-frame");
+
+      function setResult(status, message) {
+        resultElement.textContent = status;
+        resultElement.className = status.toLowerCase();
+        detailsElement.textContent = message;
+      }
+
+      function assert(condition, message) {
+        if (!condition) {
+          throw new Error(message);
+        }
+      }
+
+      function waitFor(predicate, timeoutMs) {
+        return new Promise((resolve, reject) => {
+          const deadline = Date.now() + timeoutMs;
+
+          function check() {
+            if (predicate()) {
+              resolve();
+              return;
+            }
+
+            if (Date.now() >= deadline) {
+              reject(new Error("Timed out waiting for the phase label to switch to Break."));
+              return;
+            }
+
+            window.setTimeout(check, 50);
+          }
+
+          check();
+        });
+      }
+
+      function waitForFrameLoad(frame) {
+        return new Promise((resolve, reject) => {
+          frame.addEventListener("load", resolve, { once: true });
+          frame.addEventListener(
+            "error",
+            () => reject(new Error("Failed to load index.html inside the test frame.")),
+            { once: true },
+          );
+        });
+      }
+
+      function restoreStorage(previousTimerState, previousSessionCount) {
+        if (previousTimerState === null) {
+          window.localStorage.removeItem(TIMER_STATE_STORAGE_KEY);
+        } else {
+          window.localStorage.setItem(TIMER_STATE_STORAGE_KEY, previousTimerState);
+        }
+
+        if (previousSessionCount === null) {
+          window.localStorage.removeItem(SESSION_STORAGE_KEY);
+        } else {
+          window.localStorage.setItem(SESSION_STORAGE_KEY, previousSessionCount);
+        }
+      }
+
+      async function runTest() {
+        const previousTimerState = window.localStorage.getItem(TIMER_STATE_STORAGE_KEY);
+        const previousSessionCount = window.localStorage.getItem(SESSION_STORAGE_KEY);
+        const appUrl = new URL("index.html", window.location.href);
+
+        try {
+          window.localStorage.setItem(
+            TIMER_STATE_STORAGE_KEY,
+            JSON.stringify({ phase: "work", remainingSeconds: 0, isRunning: false }),
+          );
+          window.localStorage.setItem(SESSION_STORAGE_KEY, "0");
+
+          const frameLoaded = waitForFrameLoad(appFrame);
+          appFrame.src = appUrl.href;
+          await frameLoaded;
+
+          const appWindow = appFrame.contentWindow;
+          const appDocument = appFrame.contentDocument;
+          const phaseLabel = appDocument.getElementById("phase-label");
+
+          assert(appWindow, "Expected the app iframe window to be available.");
+          assert(appDocument, "Expected the app iframe document to be available.");
+          assert(phaseLabel, "Expected to find the phase label in the app.");
+          assert(
+            phaseLabel.textContent.trim() === "Work",
+            `Expected initial phase label to be Work, received \"${phaseLabel.textContent.trim()}\".`,
+          );
+          assert(
+            typeof appWindow.startTimer === "function",
+            "Expected startTimer() to be available on the app window.",
+          );
+
+          appWindow.startTimer();
+
+          await waitFor(() => phaseLabel.textContent.trim() === "Break", 2000);
+
+          setResult(
+            "PASS",
+            'Phase label switched from "Work" to "Break" after starting from 00:00.',
+          );
+        } catch (error) {
+          setResult("FAIL", error instanceof Error ? error.message : String(error));
+        } finally {
+          const appWindow = appFrame.contentWindow;
+
+          if (appWindow && typeof appWindow.pauseTimer === "function") {
+            appWindow.pauseTimer();
+          }
+
+          restoreStorage(previousTimerState, previousSessionCount);
+        }
+      }
+
+      runTest();
+    </script>
+  </body>
+</html>
