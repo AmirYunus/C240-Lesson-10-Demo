@@ -6,6 +6,7 @@ let timerIntervalId = null;
 let timerDisplayElement = null;
 let phaseLabelElement = null;
 let progressRingFillElement = null;
+let audioContext = null;
 
 const state = { isRunning: false, phase: "work" };
 
@@ -33,12 +34,15 @@ function startTimer() {
 	state.isRunning = true;
 	timerIntervalId = window.setInterval(() => {
 		if (remainingSeconds <= 0) {
-			switchMode(state.phase === "work" ? "break" : "work");
+			const nextPhase = state.phase === "work" ? "break" : "work";
+			switchMode(nextPhase);
+			playTransitionSound(nextPhase);
 			return;
 		}
 
 		remainingSeconds -= 1;
 		handleTimerTick();
+		playTickSound(); // Play tick sound every second
 	}, 1000);
 }
 
@@ -102,7 +106,67 @@ function updateProgressCircle(percent) {
 	progressRingFillElement.style.strokeDashoffset = String(offset);
 }
 
-function playTransitionSound() {}
+function ensureAudioContext() {
+	if (audioContext) {
+		if (audioContext.state === "suspended") {
+			audioContext.resume();
+		}
+		return audioContext;
+	}
+
+	const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+	if (!AudioContextClass) {
+		return null;
+	}
+
+	audioContext = new AudioContextClass();
+	if (audioContext.state === "suspended") {
+		audioContext.resume();
+	}
+
+	return audioContext;
+}
+
+function playTransitionSound(nextPhase) {
+	playTone(nextPhase === "break" ? 440 : 660, 0.2, 0.2, "sine");
+}
+
+function playTickSound() {
+	playTone(1000, 0.06, 0.05, "square");
+}
+
+function playButtonClickSound() {
+	playTone(1800, 0.05, 0.07, "triangle");
+}
+
+function playTone(frequency, durationSeconds, peakGain, type) {
+	const context = ensureAudioContext();
+	if (!context) {
+		return;
+	}
+
+	const startAt = context.currentTime;
+	const stopAt = startAt + durationSeconds;
+
+	const oscillator = context.createOscillator();
+	const gainNode = context.createGain();
+
+	oscillator.type = type;
+	oscillator.frequency.setValueAtTime(frequency, startAt);
+
+	gainNode.gain.setValueAtTime(0.0001, startAt);
+	gainNode.gain.exponentialRampToValueAtTime(
+		Math.max(0.0002, peakGain),
+		startAt + Math.min(0.02, durationSeconds / 2),
+	);
+	gainNode.gain.exponentialRampToValueAtTime(0.0001, stopAt);
+
+	oscillator.connect(gainNode);
+	gainNode.connect(context.destination);
+
+	oscillator.start(startAt);
+	oscillator.stop(stopAt);
+}
 
 function updateSessionCounter(increment) {}
 
@@ -148,8 +212,17 @@ function setControlStates(state) {}
 function bindEventListeners() {
 	const pauseResumeBtn = document.getElementById("pause-btn");
 	const resetBtn = document.getElementById("reset-btn");
+	const buttons = document.querySelectorAll("button");
+
+	buttons.forEach((button) => {
+		button.addEventListener("click", () => {
+			playButtonClickSound();
+		});
+	});
 
 	pauseResumeBtn.addEventListener("click", () => {
+		ensureAudioContext();
+
 		if (state.isRunning) {
 			pauseTimer();
 			pauseResumeBtn.textContent = "Resume";
@@ -160,6 +233,8 @@ function bindEventListeners() {
 	});
 
 	resetBtn.addEventListener("click", () => {
+		ensureAudioContext();
+
 		if (resetBtn.textContent === "Start") {
 			startTimer();
 			pauseResumeBtn.textContent = "Pause";
