@@ -83,16 +83,29 @@ body {
 .timer-display {
   position: absolute;
   inset: 0;
-  display: grid;
-  place-items: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+}
+
+#timer-value {
   font-size: 2.8rem;
   font-weight: 700;
   letter-spacing: 0.05em;
 }
 
-.mode-label {
-  margin: 0.6rem 0 0;
-  color: var(--muted);
+.phase-label {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  color: var(--accent);
+  border: 1px solid #dcb996;
+  background: #fff2df;
+  border-radius: 999px;
+  padding: 0.2rem 0.5rem;
 }
 
 .controls {
@@ -134,8 +147,12 @@ button:hover {
 }
 
 @media (max-width: 420px) {
-  .timer-display {
+  #timer-value {
     font-size: 2.2rem;
+  }
+
+  .phase-label {
+    font-size: 0.82rem;
   }
 
   .controls {

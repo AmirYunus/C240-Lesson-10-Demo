@@ -1,18 +1,22 @@
 const WORK_DURATION_SECONDS = 25 * 60;
+const BREAK_DURATION_SECONDS = 5 * 60;
 
 let remainingSeconds = WORK_DURATION_SECONDS;
 let timerIntervalId = null;
 let timerDisplayElement = null;
+let phaseLabelElement = null;
 
 const state = { isRunning: false, phase: "work" };
 
 function initPomodoroApp() {
-	timerDisplayElement = document.getElementById("timer-display");
+	timerDisplayElement = document.getElementById("timer-value");
+	phaseLabelElement = document.getElementById("phase-label");
 
 	updateTimerDisplay(
 		Math.floor(remainingSeconds / 60),
 		remainingSeconds % 60,
 	);
+	updatePhaseLabel();
 
 	bindEventListeners();
 }
@@ -25,8 +29,7 @@ function startTimer() {
 	state.isRunning = true;
 	timerIntervalId = window.setInterval(() => {
 		if (remainingSeconds <= 0) {
-			clearInterval(timerIntervalId);
-			timerIntervalId = null;
+			switchMode(state.phase === "work" ? "break" : "work");
 			return;
 		}
 
@@ -37,9 +40,7 @@ function startTimer() {
 		);
 
 		if (remainingSeconds === 0) {
-			clearInterval(timerIntervalId);
-			timerIntervalId = null;
-			console.log("work complete");
+			switchMode(state.phase === "work" ? "break" : "work");
 		}
 	}, 1000);
 }
@@ -57,9 +58,10 @@ function resumeTimer() {
 function resetTimer() {
 	clearInterval(timerIntervalId);
 	timerIntervalId = null;
-	remainingSeconds = WORK_DURATION_SECONDS;
 	state.phase = "work";
 	state.isRunning = false;
+	remainingSeconds = WORK_DURATION_SECONDS;
+	updatePhaseLabel();
 	updateTimerDisplay(
 		Math.floor(remainingSeconds / 60),
 		remainingSeconds % 60,
@@ -67,8 +69,6 @@ function resetTimer() {
 }
 
 function handleTimerTick() {}
-
-function switchMode(newMode) {}
 
 function updateProgressCircle(percent) {}
 
@@ -88,6 +88,32 @@ function updateTimerDisplay(minutes, seconds) {
 	const minuteText = String(minutes).padStart(2, "0");
 	const secondText = String(seconds).padStart(2, "0");
 	timerDisplayElement.textContent = `${minuteText}:${secondText}`;
+}
+
+function getDurationForPhase(phase) {
+	return phase === "break" ? BREAK_DURATION_SECONDS : WORK_DURATION_SECONDS;
+}
+
+function updatePhaseLabel() {
+	if (!phaseLabelElement) {
+		return;
+	}
+
+	phaseLabelElement.textContent = state.phase === "break" ? "Break" : "Work";
+}
+
+function switchMode(newMode) {
+	if (newMode !== "work" && newMode !== "break") {
+		return;
+	}
+
+	state.phase = newMode;
+	remainingSeconds = getDurationForPhase(newMode);
+	updatePhaseLabel();
+	updateTimerDisplay(
+		Math.floor(remainingSeconds / 60),
+		remainingSeconds % 60,
+	);
 }
 
 function setControlStates(state) {}
